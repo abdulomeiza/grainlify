@@ -29,7 +29,7 @@
 #[cfg(test)]
 mod gas_profile {
     use soroban_sdk::{
-        testutils::{Address as _, Ledger, LedgerInfo},
+        testutils::{Address as _, Ledger},
         token, Address, Env, Vec,
     };
 

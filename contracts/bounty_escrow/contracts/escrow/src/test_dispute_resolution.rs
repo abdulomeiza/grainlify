@@ -61,18 +61,19 @@ fn test_dispute_resolution_flows() {
     let deadline = s.env.ledger().timestamp() + 3600;
 
     // 1. Lock funds
-    s.escrow.lock_funds(&s.depositor, &bounty_id, &amount, &deadline);
+    s.escrow
+        .lock_funds(&s.depositor, &bounty_id, &amount, &deadline);
 
     // 2. Open dispute (simulated via status check if implemented, or event check)
     // For now, we simulate the logic requested in Issue #476
     s.env.events().publish(
         (Symbol::new(&s.env, "dispute"), Symbol::new(&s.env, "open")),
-        (bounty_id, s.depositor.clone())
+        (bounty_id, s.depositor.clone()),
     );
 
     // 3. Resolve dispute in favor of release (simulated)
     s.escrow.release_funds(&bounty_id, &s.contributor);
-    
+
     let info = s.escrow.get_escrow_info(&bounty_id);
     assert_eq!(info.status, EscrowStatus::Released);
     assert_eq!(info.remaining_amount, 0);
@@ -85,15 +86,16 @@ fn test_open_dispute_blocks_refund_before_resolution() {
     let amount = 1000i128;
     let deadline = s.env.ledger().timestamp() + 3600;
 
-    s.escrow.lock_funds(&s.depositor, &bounty_id, &amount, &deadline);
+    s.escrow
+        .lock_funds(&s.depositor, &bounty_id, &amount, &deadline);
 
     // Pass deadline
     s.env.ledger().set_timestamp(deadline + 1);
 
-    // If a dispute is "open", refund should be careful. 
+    // If a dispute is "open", refund should be careful.
     // In our implementation, we ensure normal flows work but can be paused.
     s.escrow.refund(&bounty_id);
-    
+
     let info = s.escrow.get_escrow_info(&bounty_id);
     assert_eq!(info.status, EscrowStatus::Refunded);
 }

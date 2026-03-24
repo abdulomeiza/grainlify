@@ -1,11 +1,11 @@
 #![cfg(test)]
 
+use crate::MaintenanceModeChanged;
 use crate::{ProgramEscrowContract, ProgramEscrowContractClient};
 use soroban_sdk::{
     testutils::{Address as _, Events, Ledger},
     token, Address, Env, IntoVal, String, Symbol, TryIntoVal,
 };
-use crate::MaintenanceModeChanged;
 
 fn create_token_contract<'a>(env: &Env, admin: &Address) -> token::Client<'a> {
     let token_contract = env.register_stellar_asset_contract_v2(admin.clone());

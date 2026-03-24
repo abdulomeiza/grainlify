@@ -352,7 +352,6 @@ fn setup_rbac_program_env_strict<'a>(
     let program_id = String::from_str(env, "rbac-program");
     contract_client.init_program(&program_id, &operator, &token_address, &admin, &None, &None);
 
-
     // Mint and lock funds
     let depositor = Address::generate(env);
     token_admin_client.mint(&depositor, &1000);
@@ -394,7 +393,6 @@ fn setup_rbac_program_env<'a>(
     // Initialize program with operator as payout_key
     let program_id = String::from_str(env, "rbac-program");
     contract_client.init_program(&program_id, &operator, &token_address, &admin, &None, &None);
-
 
     // Mint and lock funds
     let depositor = Address::generate(env);
@@ -580,7 +578,14 @@ fn test_rbac_emergency_withdraw_drains_all_funds() {
 
     // Initialize program
     let program_id_1 = String::from_str(&env, "prog-1");
-    contract_client.init_program(&program_id_1, &operator, &token_address, &admin, &None, &None);
+    contract_client.init_program(
+        &program_id_1,
+        &operator,
+        &token_address,
+        &admin,
+        &None,
+        &None,
+    );
 
     // let program_id_2 = String::from_str(&env, "prog-2");
     // contract_client.init_program(&program_id_2, &operator, &token_address, &admin, &None, &None);

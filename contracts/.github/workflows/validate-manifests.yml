@@ -2,13 +2,13 @@ name: Validate Contract Manifests
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, develop, master ]
     paths:
       - 'contracts/*-manifest.json'
       - 'contracts/contract-manifest-schema.json'
       - '.github/workflows/validate-manifests.yml'
   pull_request:
-    branches: [ main ]
+    branches: [ main, master ]
     paths:
       - 'contracts/*-manifest.json'
       - 'contracts/contract-manifest-schema.json'
@@ -28,7 +28,7 @@ jobs:
         node-version: '18'
         
     - name: Install ajv CLI
-      run: npm install -g ajv-cli
+      run: npm install -g ajv-cli ajv-formats
       
     - name: Validate manifests against schema
       run: |
@@ -40,7 +40,7 @@ jobs:
         # Validate each manifest
         for manifest in $MANIFESTS; do
           echo "Validating $manifest..."
-          ajv validate -s contracts/contract-manifest-schema.json -d "$manifest" --verbose
+          ajv validate --spec=draft2020 -c ajv-formats -s contracts/contract-manifest-schema.json -d "$manifest" --verbose
           
           if [ $? -eq 0 ]; then
             echo "✅ $manifest is valid"
@@ -183,7 +183,7 @@ jobs:
         for manifest in $MANIFESTS; do
           MANIFEST_NAME=$(basename "$manifest" .json)
           
-          if ajv validate -s contracts/contract-manifest-schema.json -d "$manifest" >/dev/null 2>&1; then
+          if ajv validate --spec=draft2020 -c ajv-formats -s contracts/contract-manifest-schema.json -d "$manifest" >/dev/null 2>&1; then
             STATUS="✅ Valid"
             VALID_COUNT=$((VALID_COUNT + 1))
           else

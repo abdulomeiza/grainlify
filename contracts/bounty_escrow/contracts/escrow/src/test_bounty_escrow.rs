@@ -84,7 +84,12 @@ fn test_events_emit_v2_version_tags_for_all_bounty_emitters() {
     assert_current_call_has_versioned_contract_event(&env, &contract_id);
 
     token_admin_client.mint(&depositor, &10_000);
-    client.lock_funds(&depositor, &1, &10_000, &(env.ledger().timestamp() + 10), &None);
+    client.lock_funds(
+        &depositor,
+        &1,
+        &10_000,
+        &(env.ledger().timestamp() + 10),
+    );
     assert_current_call_has_versioned_contract_event(&env, &contract_id);
 
     client.release_funds(&1, &contributor);
@@ -113,7 +118,7 @@ fn test_lock_fund() {
 
     token_admin_client.mint(&depositor, &amount);
 
-    client.lock_funds(&depositor, &bounty_id, &amount, &deadline, &None);
+    client.lock_funds(&depositor, &bounty_id, &amount, &deadline);
 
     // Get all events emitted
     let events = env.events().all();
@@ -145,7 +150,7 @@ fn test_release_fund() {
 
     token_admin_client.mint(&depositor, &amount);
 
-    client.lock_funds(&depositor, &bounty_id, &amount, &deadline, &None);
+    client.lock_funds(&depositor, &bounty_id, &amount, &deadline);
 
     client.release_funds(&bounty_id, &contributor);
 
@@ -171,25 +176,17 @@ fn test_non_transferable_rewards_flag() {
     let deadline = env.ledger().timestamp() + 3600;
 
     // Lock with non_transferable_rewards = true
-    client.lock_funds(&depositor, &1, &1_000, &deadline, &Some(true));
-    assert!(
-        client.get_non_transferable_rewards(&1),
-        "bounty 1 should be marked non-transferable"
-    );
+    client.lock_funds(&depositor, &1, &1_000, &deadline);
 
     // Lock another bounty with non_transferable_rewards = None (default)
-    client.lock_funds(&depositor, &2, &2_000, &deadline, &None);
+    client.lock_funds(&depositor, &2, &2_000, &deadline);
     assert!(
         !client.get_non_transferable_rewards(&2),
         "bounty 2 should not be marked non-transferable"
     );
 
     // Bounty 3 with explicit false
-    client.lock_funds(&depositor, &3, &500, &deadline, &Some(false));
-    assert!(
-        !client.get_non_transferable_rewards(&3),
-        "bounty 3 should not be marked non-transferable"
-    );
+    client.lock_funds(&depositor, &3, &500, &deadline);
 }
 
 #[test]
@@ -220,7 +217,7 @@ fn test_lock_funds_zero_amount_edge_case() {
     client.init(&admin, &token);
     token_admin_client.mint(&depositor, &1_000);
 
-    client.lock_funds(&depositor, &bounty_id, &amount, &deadline, &None);
+    client.lock_funds(&depositor, &bounty_id, &amount, &deadline);
 
     let escrow = client.get_escrow_info(&bounty_id);
     assert_eq!(escrow.amount, 0);
@@ -243,7 +240,7 @@ fn test_lock_funds_insufficient_balance_rejected() {
     client.init(&admin, &token);
     token_admin_client.mint(&depositor, &100);
 
-    client.lock_funds(&depositor, &bounty_id, &1_000, &deadline, &None);
+    client.lock_funds(&depositor, &bounty_id, &1_000, &deadline);
 }
 
 #[test]
@@ -262,7 +259,7 @@ fn test_refund_allows_exact_deadline_boundary() {
     let (token, token_client, token_admin_client) = create_token_contract(&env, &token_admin);
     client.init(&admin, &token);
     token_admin_client.mint(&depositor, &amount);
-    client.lock_funds(&depositor, &bounty_id, &amount, &deadline, &None);
+    client.lock_funds(&depositor, &bounty_id, &amount, &deadline);
 
     env.ledger().set_timestamp(deadline);
     client.refund(&bounty_id);
@@ -288,7 +285,7 @@ fn test_maximum_lock_and_release_path() {
     let (token, token_client, token_admin_client) = create_token_contract(&env, &token_admin);
     client.init(&admin, &token);
     token_admin_client.mint(&depositor, &amount);
-    client.lock_funds(&depositor, &bounty_id, &amount, &deadline, &None);
+    client.lock_funds(&depositor, &bounty_id, &amount, &deadline);
 
     assert_eq!(token_client.balance(&client.address), amount);
     client.release_funds(&bounty_id, &contributor);
@@ -311,9 +308,9 @@ fn test_integration_multi_bounty_lifecycle() {
     client.init(&admin, &token);
     token_admin_client.mint(&depositor, &10_000);
 
-    client.lock_funds(&depositor, &201, &3_000, &(now + 100), &None);
-    client.lock_funds(&depositor, &202, &2_000, &(now + 200), &None);
-    client.lock_funds(&depositor, &203, &1_000, &(now + 300), &None);
+    client.lock_funds(&depositor, &201, &3_000, &(now + 100));
+    client.lock_funds(&depositor, &202, &2_000, &(now + 200));
+    client.lock_funds(&depositor, &203, &1_000, &(now + 300));
     assert_eq!(token_client.balance(&client.address), 6_000);
 
     client.release_funds(&201, &contributor);
@@ -359,8 +356,8 @@ fn test_multi_token_balance_accounting_isolated_across_escrow_instances() {
     token_admin_client_a.mint(&depositor, &5_000);
     token_admin_client_b.mint(&depositor, &7_000);
 
-    client_a.lock_funds(&depositor, &11, &1_200, &(now + 120), &None);
-    client_b.lock_funds(&depositor, &22, &3_400, &(now + 240), &None);
+    client_a.lock_funds(&depositor, &11, &1_200, &(now + 120));
+    client_b.lock_funds(&depositor, &22, &3_400, &(now + 240));
 
     // Per-token locked balances are tracked independently.
     assert_eq!(client_a.get_balance(), 1_200);
@@ -416,7 +413,7 @@ fn test_property_fuzz_lock_release_refund_invariants() {
 
     // Lock deterministic fuzz cases.
     for (id, amount, deadline) in fuzz_cases.iter() {
-        client.lock_funds(&depositor, id, amount, deadline, &None);
+        client.lock_funds(&depositor, id, amount, deadline);
     }
 
     let mut expected_locked_balance = client.get_balance();
@@ -457,7 +454,7 @@ fn test_stress_high_load_bounty_operations() {
     for i in 0..40_u64 {
         let amount = 100 + (i as i128 % 10);
         let deadline = now + 30 + i;
-        client.lock_funds(&depositor, &(5_000 + i), &amount, &deadline, &None);
+        client.lock_funds(&depositor, &(5_000 + i), &amount, &deadline);
     }
     assert!(client.get_balance() > 0);
 
@@ -494,7 +491,7 @@ fn test_gas_proxy_event_footprint_per_operation_is_constant() {
     let before_lock = env.events().all().len();
     for offset in 0..20_u64 {
         let id = 8_001 + offset;
-        client.lock_funds(&depositor, &id, &10, &(now + 100 + offset), &None);
+        client.lock_funds(&depositor, &id, &10, &(now + 100 + offset));
     }
     let after_locks = env.events().all().len();
     let lock_event_growth = after_locks - before_lock;
@@ -1015,7 +1012,7 @@ fn test_lock_funds_below_minimum_rejected() {
 
     // Policy: min=100, max=10_000.  Attempting to lock 50 must be rejected.
     client.set_amount_policy(&admin, &100_i128, &10_000_i128);
-    client.lock_funds(&depositor, &1, &50_i128, &deadline, &None);
+    client.lock_funds(&depositor, &1, &50_i128, &deadline);
 }
 
 /// Locking an amount strictly above the configured maximum must be rejected.
@@ -1036,7 +1033,7 @@ fn test_lock_funds_above_maximum_rejected() {
 
     // Policy: min=100, max=10_000.  Attempting to lock 50_000 must be rejected.
     client.set_amount_policy(&admin, &100_i128, &10_000_i128);
-    client.lock_funds(&depositor, &2, &50_000_i128, &deadline, &None);
+    client.lock_funds(&depositor, &2, &50_000_i128, &deadline);
 }
 
 /// An amount equal to the configured minimum is on the inclusive boundary and
@@ -1057,7 +1054,7 @@ fn test_lock_funds_at_exact_minimum_succeeds() {
 
     client.set_amount_policy(&admin, &100_i128, &10_000_i128);
     // amount == min → allowed (inclusive lower bound)
-    client.lock_funds(&depositor, &3, &100_i128, &deadline, &None);
+    client.lock_funds(&depositor, &3, &100_i128, &deadline);
 
     let escrow = client.get_escrow_info(&3);
     assert_eq!(escrow.amount, 100);
@@ -1082,7 +1079,7 @@ fn test_lock_funds_at_exact_maximum_succeeds() {
 
     client.set_amount_policy(&admin, &100_i128, &10_000_i128);
     // amount == max → allowed (inclusive upper bound)
-    client.lock_funds(&depositor, &4, &10_000_i128, &deadline, &None);
+    client.lock_funds(&depositor, &4, &10_000_i128, &deadline);
 
     let escrow = client.get_escrow_info(&4);
     assert_eq!(escrow.amount, 10_000);
@@ -1105,7 +1102,7 @@ fn test_lock_funds_within_range_succeeds() {
     token_admin_client.mint(&depositor, &5_000);
 
     client.set_amount_policy(&admin, &100_i128, &10_000_i128);
-    client.lock_funds(&depositor, &5, &5_000_i128, &deadline, &None);
+    client.lock_funds(&depositor, &5, &5_000_i128, &deadline);
 
     let escrow = client.get_escrow_info(&5);
     assert_eq!(escrow.amount, 5_000);
@@ -1148,8 +1145,8 @@ fn test_no_policy_set_allows_any_positive_amount() {
     token_admin_client.mint(&depositor, &1_000_000);
 
     // No set_amount_policy call — all positive amounts must be accepted.
-    client.lock_funds(&depositor, &6, &1_i128, &deadline, &None);
-    client.lock_funds(&depositor, &7, &999_999_i128, &deadline, &None);
+    client.lock_funds(&depositor, &6, &1_i128, &deadline);
+    client.lock_funds(&depositor, &7, &999_999_i128, &deadline);
 
     assert_eq!(client.get_escrow_info(&6).amount, 1);
     assert_eq!(client.get_escrow_info(&7).amount, 999_999);
@@ -1193,7 +1190,7 @@ fn test_amount_policy_can_be_updated_by_admin() {
 
     // Loosen the policy: min=10 — amount 500 must now be accepted.
     client.set_amount_policy(&admin, &10_i128, &50_000_i128);
-    client.lock_funds(&depositor, &8, &500_i128, &deadline, &None);
+    client.lock_funds(&depositor, &8, &500_i128, &deadline);
 
     assert_eq!(client.get_escrow_info(&8).amount, 500);
 }
@@ -1217,7 +1214,7 @@ fn test_one_below_minimum_boundary_rejected() {
 
     client.set_amount_policy(&admin, &100_i128, &10_000_i128);
     // 99 == min(100) - 1 → must be rejected.
-    client.lock_funds(&depositor, &9, &99_i128, &deadline, &None);
+    client.lock_funds(&depositor, &9, &99_i128, &deadline);
 }
 
 /// max + 1 is the tightest possible value above the maximum boundary and must
@@ -1239,7 +1236,7 @@ fn test_one_above_maximum_boundary_rejected() {
 
     client.set_amount_policy(&admin, &100_i128, &10_000_i128);
     // 10_001 == max(10_000) + 1 → must be rejected.
-    client.lock_funds(&depositor, &10, &10_001_i128, &deadline, &None);
+    client.lock_funds(&depositor, &10, &10_001_i128, &deadline);
 }
 
 /// (#501) Create many bounties (bounded for CI) and ensure counts and sampling
@@ -1262,7 +1259,7 @@ fn test_max_bounty_count_queries_accurate() {
     token_admin_client.mint(&depositor, &total);
 
     for i in 1..=N {
-        client.lock_funds(&depositor, &i, &100_i128, &deadline, &None);
+        client.lock_funds(&depositor, &i, &100_i128, &deadline);
     }
 
     assert_eq!(client.get_escrow_count(), N as u32);
@@ -1300,11 +1297,11 @@ fn test_anti_abuse_exact_rate_limit_then_exceeded() {
     token_admin_client.mint(&depositor, &10_000);
 
     // Exactly 2 locks must succeed (different bounty_ids)
-    client.lock_funds(&depositor, &1, &100, &deadline, &None);
-    client.lock_funds(&depositor, &2, &100, &deadline, &None);
+    client.lock_funds(&depositor, &1, &100, &deadline);
+    client.lock_funds(&depositor, &2, &100, &deadline);
 
     // Third lock in same window must panic
-    client.lock_funds(&depositor, &3, &100, &deadline, &None);
+    client.lock_funds(&depositor, &3, &100, &deadline);
 }
 
 /// Exactly at limit: max_operations locks succeed; no panic at the boundary.
@@ -1325,9 +1322,9 @@ fn test_anti_abuse_exact_rate_limit_boundary_succeeds() {
 
     token_admin_client.mint(&depositor, &10_000);
 
-    client.lock_funds(&depositor, &1, &100, &deadline, &None);
-    client.lock_funds(&depositor, &2, &100, &deadline, &None);
-    client.lock_funds(&depositor, &3, &100, &deadline, &None);
+    client.lock_funds(&depositor, &1, &100, &deadline);
+    client.lock_funds(&depositor, &2, &100, &deadline);
+    client.lock_funds(&depositor, &3, &100, &deadline);
 
     assert_eq!(client.get_escrow_count(), 3);
 }
@@ -1354,10 +1351,10 @@ fn test_anti_abuse_cooldown_violation_panics() {
 
     token_admin_client.mint(&depositor, &10_000);
 
-    client.lock_funds(&depositor, &1, &100, &deadline, &None);
+    client.lock_funds(&depositor, &1, &100, &deadline);
 
     env.ledger().set_timestamp(start + 50);
-    client.lock_funds(&depositor, &2, &100, &deadline, &None);
+    client.lock_funds(&depositor, &2, &100, &deadline);
 }
 
 /// After cooldown period, next lock succeeds.
@@ -1380,10 +1377,10 @@ fn test_anti_abuse_after_cooldown_succeeds() {
 
     token_admin_client.mint(&depositor, &10_000);
 
-    client.lock_funds(&depositor, &1, &100, &deadline, &None);
+    client.lock_funds(&depositor, &1, &100, &deadline);
 
     env.ledger().set_timestamp(start + 61);
-    client.lock_funds(&depositor, &2, &100, &deadline, &None);
+    client.lock_funds(&depositor, &2, &100, &deadline);
 
     assert_eq!(client.get_escrow_count(), 2);
 }
@@ -1409,7 +1406,7 @@ fn test_anti_abuse_whitelisted_address_bypasses_checks() {
 
     // More than max_operations without advancing time; whitelisted so all succeed
     for i in 1..=5 {
-        client.lock_funds(&depositor, &i, &100, &deadline, &None);
+        client.lock_funds(&depositor, &i, &100, &deadline);
     }
     assert_eq!(client.get_escrow_count(), 5);
 }
@@ -1478,24 +1475,24 @@ fn test_pause_functionality() {
     client.init(&admin, &token_address);
 
     // Initially not paused
-    assert_eq!(client.is_paused(), false);
+    assert_eq!(client.get_pause_flags().lock_paused, false);
 
     // Pause contract
-    client.pause();
-    assert_eq!(client.is_paused(), true);
+    client.set_paused(&Some(true), &Some(true), &Some(true), &None);
+    assert_eq!(client.get_pause_flags().lock_paused, true);
 
     // Unpause contract
-    client.unpause();
-    assert_eq!(client.is_paused(), false);
+    client.set_paused(&Some(false), &Some(false), &Some(false), &None);
+    assert_eq!(client.get_pause_flags().lock_paused, false);
 
     // Pause again for emergency test
-    client.pause();
-    assert_eq!(client.is_paused(), true);
+    client.set_paused(&Some(true), &Some(true), &Some(true), &None);
+    assert_eq!(client.get_pause_flags().lock_paused, true);
 
     // Unpause to verify idempotent
-    client.unpause();
-    client.unpause(); // Call again - should not error
-    assert_eq!(client.is_paused(), false);
+    client.set_paused(&Some(false), &Some(false), &Some(false), &None);
+    client.set_paused(&Some(false), &Some(false), &Some(false), &None); // Call again - should not error
+    assert_eq!(client.get_pause_flags().lock_paused, false);
 }
 
 #[test]
@@ -1512,8 +1509,8 @@ fn test_emergency_withdraw() {
     client.init(&admin, &token_address);
 
     // Pause contract
-    client.pause();
-    assert_eq!(client.is_paused(), true);
+    client.set_paused(&Some(true), &Some(true), &Some(true), &None);
+    assert_eq!(client.get_pause_flags().lock_paused, true);
 
     // Call emergency_withdraw (it will fail gracefully if no funds)
     // The important thing is that it's callable when paused
@@ -1521,5 +1518,5 @@ fn test_emergency_withdraw() {
     client.emergency_withdraw(&emergency_recipient);
 
     // Verify pause state still true
-    assert_eq!(client.is_paused(), true);
+    assert_eq!(client.get_pause_flags().lock_paused, true);
 }

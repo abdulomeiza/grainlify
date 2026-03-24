@@ -1,3 +1,17 @@
+# Bounty Escrow Contract
+
+## Dry-Run Simulation API
+
+The escrow contract provides read-only dry-run entrypoints for previewing operations without mutating state. See [contracts/escrow/DRY_RUN_API.md](contracts/escrow/DRY_RUN_API.md) for full documentation.
+
+- **dry_run_lock** – Simulate lock without transfers
+- **dry_run_release** – Simulate release without transfers
+- **dry_run_refund** – Simulate refund without transfers
+
+All return `SimulationResult` with success/error_code/amount/resulting_status/remaining_amount. No authorization required.
+
+---
+
 # Soroban Project
 
 ## Project Structure

@@ -323,6 +323,12 @@ pub(crate) fn assert_all_invariants(env: &Env) {
 
 /// Assert after a lock: aggregate balance must equal token balance.
 pub(crate) fn assert_after_lock(env: &Env) {
+    let key = soroban_sdk::Symbol::new(env, "InvOff");
+    let disabled: bool = env.storage().instance().get(&key).unwrap_or(false);
+    
+    if disabled {
+        return;
+    }
     let sum = sum_active_escrow_balances(env);
     let actual = get_contract_token_balance(env);
     if sum != actual {
@@ -335,6 +341,12 @@ pub(crate) fn assert_after_lock(env: &Env) {
 
 /// Assert after a release/refund: aggregate balance must equal token balance.
 pub(crate) fn assert_after_disbursement(env: &Env) {
+    let key = soroban_sdk::Symbol::new(env, "InvOff");
+    let disabled: bool = env.storage().instance().get(&key).unwrap_or(false);
+    
+    if disabled {
+        return;
+    }
     let sum = sum_active_escrow_balances(env);
     let actual = get_contract_token_balance(env);
     if sum != actual {

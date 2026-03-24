@@ -71,17 +71,17 @@ impl<'a> SimSetup<'a> {
 }
 
 // ===========================================================================
-// simulate_lock
+// dry_run_lock
 // ===========================================================================
 
 #[test]
-fn test_simulate_lock_success() {
+fn test_dry_run_lock_success() {
     let s = SimSetup::new();
     let deadline = s.env.ledger().timestamp() + 5_000;
 
     let result = s
         .escrow
-        .simulate_lock(&s.depositor, &1_u64, &1_000, &deadline);
+        .dry_run_lock(&s.depositor, &1_u64, &1_000, &deadline);
 
     assert!(result.success);
     assert_eq!(result.error_code, 0);
@@ -91,14 +91,14 @@ fn test_simulate_lock_success() {
 }
 
 #[test]
-fn test_simulate_lock_does_not_mutate_state() {
+fn test_dry_run_lock_does_not_mutate_state() {
     let s = SimSetup::new();
     let deadline = s.env.ledger().timestamp() + 5_000;
     let balance_before = s.token.balance(&s.depositor);
 
     let result = s
         .escrow
-        .simulate_lock(&s.depositor, &1_u64, &1_000, &deadline);
+        .dry_run_lock(&s.depositor, &1_u64, &1_000, &deadline);
     assert!(result.success);
 
     // No funds moved, no escrow created
@@ -110,13 +110,13 @@ fn test_simulate_lock_does_not_mutate_state() {
 }
 
 #[test]
-fn test_simulate_lock_matches_real_execution_success() {
+fn test_dry_run_lock_matches_real_execution_success() {
     let s = SimSetup::new();
     let deadline = s.env.ledger().timestamp() + 5_000;
 
     let sim = s
         .escrow
-        .simulate_lock(&s.depositor, &1_u64, &1_000, &deadline);
+        .dry_run_lock(&s.depositor, &1_u64, &1_000, &deadline);
     assert!(sim.success);
 
     // Real execution should also succeed
@@ -128,7 +128,7 @@ fn test_simulate_lock_matches_real_execution_success() {
 }
 
 #[test]
-fn test_simulate_lock_duplicate_bounty() {
+fn test_dry_run_lock_duplicate_bounty() {
     let s = SimSetup::new();
     let deadline = s.env.ledger().timestamp() + 5_000;
 
@@ -136,39 +136,39 @@ fn test_simulate_lock_duplicate_bounty() {
 
     let result = s
         .escrow
-        .simulate_lock(&s.depositor, &1_u64, &500, &deadline);
+        .dry_run_lock(&s.depositor, &1_u64, &500, &deadline);
 
     assert!(!result.success);
     assert_eq!(result.error_code, Error::BountyExists as u32);
 }
 
 #[test]
-fn test_simulate_lock_insufficient_balance() {
+fn test_dry_run_lock_insufficient_balance() {
     let s = SimSetup::new();
     let deadline = s.env.ledger().timestamp() + 5_000;
     let huge_amount = 999_999_999_i128;
 
     let result = s
         .escrow
-        .simulate_lock(&s.depositor, &1_u64, &huge_amount, &deadline);
+        .dry_run_lock(&s.depositor, &1_u64, &huge_amount, &deadline);
 
     assert!(!result.success);
     assert_eq!(result.error_code, Error::InsufficientFunds as u32);
 }
 
 #[test]
-fn test_simulate_lock_invalid_amount() {
+fn test_dry_run_lock_invalid_amount() {
     let s = SimSetup::new();
     let deadline = s.env.ledger().timestamp() + 5_000;
 
-    let result = s.escrow.simulate_lock(&s.depositor, &1_u64, &0, &deadline);
+    let result = s.escrow.dry_run_lock(&s.depositor, &1_u64, &0, &deadline);
 
     assert!(!result.success);
     assert_eq!(result.error_code, Error::InvalidAmount as u32);
 }
 
 #[test]
-fn test_simulate_lock_paused() {
+fn test_dry_run_lock_paused() {
     let s = SimSetup::new();
     let deadline = s.env.ledger().timestamp() + 5_000;
 
@@ -181,24 +181,24 @@ fn test_simulate_lock_paused() {
 
     let result = s
         .escrow
-        .simulate_lock(&s.depositor, &1_u64, &1_000, &deadline);
+        .dry_run_lock(&s.depositor, &1_u64, &1_000, &deadline);
 
     assert!(!result.success);
     assert_eq!(result.error_code, Error::FundsPaused as u32);
 }
 
 // ===========================================================================
-// simulate_release
+// dry_run_release
 // ===========================================================================
 
 #[test]
-fn test_simulate_release_success() {
+fn test_dry_run_release_success() {
     let s = SimSetup::new();
     let deadline = s.env.ledger().timestamp() + 5_000;
 
     s.escrow.lock_funds(&s.depositor, &1_u64, &1_000, &deadline);
 
-    let result = s.escrow.simulate_release(&1_u64, &s.contributor);
+    let result = s.escrow.dry_run_release(&1_u64, &s.contributor);
 
     assert!(result.success);
     assert_eq!(result.error_code, 0);
@@ -208,13 +208,13 @@ fn test_simulate_release_success() {
 }
 
 #[test]
-fn test_simulate_release_does_not_mutate_state() {
+fn test_dry_run_release_does_not_mutate_state() {
     let s = SimSetup::new();
     let deadline = s.env.ledger().timestamp() + 5_000;
 
     s.escrow.lock_funds(&s.depositor, &1_u64, &1_000, &deadline);
 
-    let result = s.escrow.simulate_release(&1_u64, &s.contributor);
+    let result = s.escrow.dry_run_release(&1_u64, &s.contributor);
     assert!(result.success);
 
     // Escrow should still be Locked
@@ -226,13 +226,13 @@ fn test_simulate_release_does_not_mutate_state() {
 }
 
 #[test]
-fn test_simulate_release_matches_real_execution() {
+fn test_dry_run_release_matches_real_execution() {
     let s = SimSetup::new();
     let deadline = s.env.ledger().timestamp() + 5_000;
 
     s.escrow.lock_funds(&s.depositor, &1_u64, &1_000, &deadline);
 
-    let sim = s.escrow.simulate_release(&1_u64, &s.contributor);
+    let sim = s.escrow.dry_run_release(&1_u64, &s.contributor);
     assert!(sim.success);
 
     s.escrow.release_funds(&1_u64, &s.contributor);
@@ -242,35 +242,35 @@ fn test_simulate_release_matches_real_execution() {
 }
 
 #[test]
-fn test_simulate_release_not_found() {
+fn test_dry_run_release_not_found() {
     let s = SimSetup::new();
 
-    let result = s.escrow.simulate_release(&999_u64, &s.contributor);
+    let result = s.escrow.dry_run_release(&999_u64, &s.contributor);
 
     assert!(!result.success);
     assert_eq!(result.error_code, Error::BountyNotFound as u32);
 }
 
 #[test]
-fn test_simulate_release_already_released() {
+fn test_dry_run_release_already_released() {
     let s = SimSetup::new();
     let deadline = s.env.ledger().timestamp() + 5_000;
 
     s.escrow.lock_funds(&s.depositor, &1_u64, &1_000, &deadline);
     s.escrow.release_funds(&1_u64, &s.contributor);
 
-    let result = s.escrow.simulate_release(&1_u64, &s.contributor);
+    let result = s.escrow.dry_run_release(&1_u64, &s.contributor);
 
     assert!(!result.success);
     assert_eq!(result.error_code, Error::FundsNotLocked as u32);
 }
 
 // ===========================================================================
-// simulate_refund
+// dry_run_refund
 // ===========================================================================
 
 #[test]
-fn test_simulate_refund_success_after_deadline() {
+fn test_dry_run_refund_success_after_deadline() {
     let s = SimSetup::new();
     let deadline = s.env.ledger().timestamp() + 1_000;
 
@@ -278,7 +278,7 @@ fn test_simulate_refund_success_after_deadline() {
 
     s.env.ledger().set_timestamp(deadline + 1);
 
-    let result = s.escrow.simulate_refund(&1_u64);
+    let result = s.escrow.dry_run_refund(&1_u64);
 
     assert!(result.success);
     assert_eq!(result.error_code, 0);
@@ -288,7 +288,7 @@ fn test_simulate_refund_success_after_deadline() {
 }
 
 #[test]
-fn test_simulate_refund_does_not_mutate_state() {
+fn test_dry_run_refund_does_not_mutate_state() {
     let s = SimSetup::new();
     let deadline = s.env.ledger().timestamp() + 1_000;
 
@@ -297,7 +297,7 @@ fn test_simulate_refund_does_not_mutate_state() {
 
     let depositor_before = s.token.balance(&s.depositor);
 
-    let result = s.escrow.simulate_refund(&1_u64);
+    let result = s.escrow.dry_run_refund(&1_u64);
     assert!(result.success);
 
     // State unchanged
@@ -307,14 +307,14 @@ fn test_simulate_refund_does_not_mutate_state() {
 }
 
 #[test]
-fn test_simulate_refund_matches_real_execution() {
+fn test_dry_run_refund_matches_real_execution() {
     let s = SimSetup::new();
     let deadline = s.env.ledger().timestamp() + 1_000;
 
     s.escrow.lock_funds(&s.depositor, &1_u64, &1_000, &deadline);
     s.env.ledger().set_timestamp(deadline + 1);
 
-    let sim = s.escrow.simulate_refund(&1_u64);
+    let sim = s.escrow.dry_run_refund(&1_u64);
     assert!(sim.success);
 
     s.escrow.refund(&1_u64);
@@ -324,44 +324,44 @@ fn test_simulate_refund_matches_real_execution() {
 }
 
 #[test]
-fn test_simulate_refund_before_deadline_fails() {
+fn test_dry_run_refund_before_deadline_fails() {
     let s = SimSetup::new();
     let deadline = s.env.ledger().timestamp() + 10_000;
 
     s.escrow.lock_funds(&s.depositor, &1_u64, &1_000, &deadline);
 
-    let result = s.escrow.simulate_refund(&1_u64);
+    let result = s.escrow.dry_run_refund(&1_u64);
 
     assert!(!result.success);
     assert_eq!(result.error_code, Error::DeadlineNotPassed as u32);
 }
 
 #[test]
-fn test_simulate_refund_not_found() {
+fn test_dry_run_refund_not_found() {
     let s = SimSetup::new();
 
-    let result = s.escrow.simulate_refund(&999_u64);
+    let result = s.escrow.dry_run_refund(&999_u64);
 
     assert!(!result.success);
     assert_eq!(result.error_code, Error::BountyNotFound as u32);
 }
 
 #[test]
-fn test_simulate_refund_already_released() {
+fn test_dry_run_refund_already_released() {
     let s = SimSetup::new();
     let deadline = s.env.ledger().timestamp() + 5_000;
 
     s.escrow.lock_funds(&s.depositor, &1_u64, &1_000, &deadline);
     s.escrow.release_funds(&1_u64, &s.contributor);
 
-    let result = s.escrow.simulate_refund(&1_u64);
+    let result = s.escrow.dry_run_refund(&1_u64);
 
     assert!(!result.success);
     assert_eq!(result.error_code, Error::FundsNotLocked as u32);
 }
 
 #[test]
-fn test_simulate_refund_with_pending_claim_fails() {
+fn test_dry_run_refund_with_pending_claim_fails() {
     let s = SimSetup::new();
     let deadline = s.env.ledger().timestamp() + 10_000;
 
@@ -372,7 +372,7 @@ fn test_simulate_refund_with_pending_claim_fails() {
 
     s.env.ledger().set_timestamp(deadline + 1);
 
-    let result = s.escrow.simulate_refund(&1_u64);
+    let result = s.escrow.dry_run_refund(&1_u64);
 
     assert!(!result.success);
     assert_eq!(result.error_code, Error::ClaimPending as u32);

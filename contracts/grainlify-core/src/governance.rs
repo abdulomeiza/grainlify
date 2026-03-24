@@ -286,7 +286,6 @@ impl GovernanceContract {
     }
 }
 
-
 #[cfg(test)]
 #[cfg(any())] // Disabled - GovernanceContract needs #[contract] macro to generate client
 

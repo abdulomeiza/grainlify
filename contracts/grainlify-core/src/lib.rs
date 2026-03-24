@@ -1147,7 +1147,9 @@ impl GrainlifyContract {
         env.storage().instance().set(&DataKey::Admin, &admin);
         env.storage().instance().set(&DataKey::Version, &VERSION);
         env.storage().instance().set(&DataKey::ChainId, &chain_id);
-        env.storage().instance().set(&DataKey::NetworkId, &network_id);
+        env.storage()
+            .instance()
+            .set(&DataKey::NetworkId, &network_id);
     }
 
     /// Restores core configuration from a previously captured snapshot (admin-only).
@@ -2054,5 +2056,4 @@ mod test {
 
     #[cfg(all(test, feature = "upgrade_rollback_tests"))]
     mod upgrade_rollback_tests;
-
 }

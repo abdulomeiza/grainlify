@@ -12,16 +12,7 @@ use soroban_sdk::{
 fn create_env() -> Env {
     let env = Env::default();
     env.mock_all_auths();
-    env.ledger().set(LedgerInfo {
-        timestamp: 1_000_000,
-        protocol_version: 20,
-        sequence_number: 100,
-        network_id: Default::default(),
-        base_reserve: 10,
-        min_temp_entry_ttl: 1_000,
-        min_persistent_entry_ttl: 1_000,
-        max_entry_ttl: 100_000,
-    });
+    env.ledger().set_timestamp(1_000_000);
     env
 }
 

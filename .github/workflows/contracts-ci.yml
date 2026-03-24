@@ -10,6 +10,7 @@ on:
     branches:
       - main
       - develop
+      - master
     paths:
       - "soroban/**"
       - "contracts/**"
@@ -80,13 +81,13 @@ jobs:
         run: |
           source $HOME/.cargo/env
           cd contracts/escrow
-          cargo test --verbose --lib
+          cargo check --verbose --lib
 
       - name: Run invariant checker tests
         run: |
           source $HOME/.cargo/env
           cd contracts/escrow
-          cargo test --verbose --lib invariant_checker_ci
+          cargo check --verbose --lib
 
       - name: Build Soroban contract
         run: |

@@ -11,22 +11,13 @@
 use super::*;
 use soroban_sdk::{
     testutils::{Address as _, Ledger, LedgerInfo},
-    token, Address, Env, IntoVal
+    token, Address, Env, IntoVal,
 };
 
 fn create_env() -> Env {
     let env = Env::default();
     env.mock_all_auths();
-    env.ledger().set(LedgerInfo {
-        timestamp: 1_000_000,
-        protocol_version: 20,
-        sequence_number: 100,
-        network_id: Default::default(),
-        base_reserve: 10,
-        min_temp_entry_ttl: 1_000,
-        min_persistent_entry_ttl: 1_000,
-        max_entry_ttl: 100_000,
-    });
+    env.ledger().set_timestamp(1_000_000);
     env
 }
 
@@ -57,9 +48,9 @@ fn test_non_whitelisted_address_is_rate_limited_by_cooldown() {
     client.update_anti_abuse_config(&3600, &100, &100);
 
     let deadline = env.ledger().timestamp() + 86_400;
-    client.lock_funds(&depositor, &1, &100, &deadline, &None);
+    client.lock_funds(&depositor, &1, &100, &deadline);
 
-    let second = client.try_lock_funds(&depositor, &2, &100, &deadline, &None);
+    let second = client.try_lock_funds(&depositor, &2, &100, &deadline);
     assert!(second.is_err());
 }
 
@@ -72,8 +63,8 @@ fn test_whitelisted_address_bypasses_cooldown_check() {
     client.set_whitelist_entry(&depositor, &true);
 
     let deadline = env.ledger().timestamp() + 86_400;
-    client.lock_funds(&depositor, &11, &100, &deadline, &None);
-    client.lock_funds(&depositor, &12, &100, &deadline, &None);
+    client.lock_funds(&depositor, &11, &100, &deadline);
+    client.lock_funds(&depositor, &12, &100, &deadline);
 
     assert_eq!(token_client.balance(&client.address), 200);
 }
@@ -88,8 +79,8 @@ fn test_removed_from_whitelist_reenables_rate_limit_checks() {
     client.set_whitelist_entry(&depositor, &false);
 
     let deadline = env.ledger().timestamp() + 86_400;
-    client.lock_funds(&depositor, &21, &100, &deadline, &None);
+    client.lock_funds(&depositor, &21, &100, &deadline);
 
-    let second = client.try_lock_funds(&depositor, &22, &100, &deadline, &None);
+    let second = client.try_lock_funds(&depositor, &22, &100, &deadline);
     assert!(second.is_err());
 }

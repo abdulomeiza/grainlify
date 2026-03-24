@@ -96,6 +96,8 @@ fn serialization_compatibility_public_types_and_events() {
                 repo_id,
                 issue_id,
                 bounty_type: bounty_type.clone(),
+                risk_flags: 0,
+                reference_hash: None,
             }
             .into_val(&env),
         ),
@@ -188,6 +190,7 @@ fn serialization_compatibility_public_types_and_events() {
                 amount: 1234,
                 expires_at: 555,
                 claimed: false,
+            reason: DisputeReason::Other,
             }
             .into_val(&env),
         ),

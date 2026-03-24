@@ -1,5 +1,5 @@
 use crate::CapabilityAction;
-use soroban_sdk::{contracttype, symbol_short, Address, Env};
+use soroban_sdk::{contracttype, symbol_short, Address, BytesN, Env};
 
 pub const EVENT_VERSION_V2: u32 = 2;
 
@@ -203,6 +203,13 @@ pub struct ClaimCancelled {
     pub cancelled_by: Address,
 }
 
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum CriticalOperationOutcome {
+    Released,
+    Refunded,
+}
+
 /// Event emitted when deterministic pseudo-random winner selection is derived.
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -218,6 +225,108 @@ pub struct DeterministicSelectionDerived {
 
 pub fn emit_deterministic_selection(env: &Env, event: DeterministicSelectionDerived) {
     let topics = (symbol_short!("prng_sel"), event.bounty_id);
+    env.events().publish(topics, event);
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FundsLockedAnon {
+    pub version: u32,
+    pub bounty_id: u64,
+    pub amount: i128,
+    pub depositor_commitment: BytesN<32>,
+    pub deadline: u64,
+}
+
+pub fn emit_funds_locked_anon(env: &Env, event: FundsLockedAnon) {
+    let topics = (symbol_short!("f_lkanon"), event.bounty_id);
+    env.events().publish(topics, event);
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DeprecationStateChanged {
+    pub deprecated: bool,
+    pub migration_target: Option<Address>,
+    pub admin: Address,
+    pub timestamp: u64,
+}
+
+pub fn emit_deprecation_state_changed(env: &Env, event: DeprecationStateChanged) {
+    let topics = (symbol_short!("deprec"),);
+    env.events().publish(topics, event);
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MaintenanceModeChanged {
+    pub enabled: bool,
+    pub admin: Address,
+    pub timestamp: u64,
+}
+
+pub fn emit_maintenance_mode_changed(env: &Env, event: MaintenanceModeChanged) {
+    let topics = (symbol_short!("maint"),);
+    env.events().publish(topics, event);
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ParticipantFilterModeChanged {
+    pub previous_mode: crate::ParticipantFilterMode,
+    pub new_mode: crate::ParticipantFilterMode,
+    pub admin: Address,
+    pub timestamp: u64,
+}
+
+pub fn emit_participant_filter_mode_changed(env: &Env, event: ParticipantFilterModeChanged) {
+    let topics = (symbol_short!("pf_mode"),);
+    env.events().publish(topics, event);
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RiskFlagsUpdated {
+    pub version: u32,
+    pub bounty_id: u64,
+    pub previous_flags: u32,
+    pub new_flags: u32,
+    pub admin: Address,
+    pub timestamp: u64,
+}
+
+pub fn emit_risk_flags_updated(env: &Env, event: RiskFlagsUpdated) {
+    let topics = (symbol_short!("risk"), event.bounty_id);
+    env.events().publish(topics, event);
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TicketIssued {
+    pub ticket_id: u64,
+    pub bounty_id: u64,
+    pub beneficiary: Address,
+    pub amount: i128,
+    pub expires_at: u64,
+    pub issued_at: u64,
+}
+
+pub fn emit_ticket_issued(env: &Env, event: TicketIssued) {
+    let topics = (symbol_short!("ticket_i"), event.ticket_id);
+    env.events().publish(topics, event);
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TicketClaimed {
+    pub ticket_id: u64,
+    pub bounty_id: u64,
+    pub claimer: Address,
+    pub claimed_at: u64,
+}
+
+pub fn emit_ticket_claimed(env: &Env, event: TicketClaimed) {
+    let topics = (symbol_short!("ticket_c"), event.ticket_id);
     env.events().publish(topics, event);
 }
 
