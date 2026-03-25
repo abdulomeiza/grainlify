@@ -4370,21 +4370,8 @@ impl BountyEscrowContract {
             Ok(locked_count)
         })();
 
-        emit_batch_funds_locked(
-            &env,
-            BatchFundsLocked {
-                count: locked_count,
-                total_amount: ordered_items
-                    .iter()
-                    .try_fold(0i128, |acc, i| acc.checked_add(i.amount))
-                    .unwrap(),
-                timestamp,
-            },
-        );
-
         // GUARD: release reentrancy lock
         reentrancy_guard::release(&env);
-        Ok(locked_count)
         result
     }
 
