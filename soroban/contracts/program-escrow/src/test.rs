@@ -902,7 +902,7 @@ fn test_sequential_batch_overlap_fails() {
 // ==================== JURISDICTION CONTROLS ====================
 
 #[test]
-fn test_register_program_juris_config() {
+#[test]
 fn test_register_prog_w_juris_config() {
     setup!(
         env,
@@ -922,7 +922,6 @@ fn test_register_prog_w_juris_config() {
         registration_paused: false,
     };
 
-    client.register_program_juris(
     client.register_prog_w_juris(
         &91,
         &program_admin,
@@ -938,12 +937,6 @@ fn test_register_prog_w_juris_config() {
 
     let program = client.get_program(&91);
     assert_eq!(client.get_program_jurisdiction(&91), Some(cfg));
-}
-
-#[test]
-fn test_register_program_juris_requires_kyc_attestation() {
-    assert_eq!(program.jurisdiction, OptionalJurisdiction::Some(cfg.clone()));
-    assert_eq!(client.get_program_jurisdiction(&91), OptionalJurisdiction::Some(cfg));
 }
 
 #[test]
@@ -966,7 +959,6 @@ fn test_register_prog_w_juris_requires_kyc_attestation() {
         registration_paused: false,
     };
 
-    let res = client.try_register_program_juris(
     let res = client.try_register_prog_w_juris(
         &92,
         &program_admin,
@@ -983,7 +975,7 @@ fn test_register_prog_w_juris_requires_kyc_attestation() {
 }
 
 #[test]
-fn test_register_program_juris_max_funding_enforced() {
+#[test]
 fn test_register_prog_w_juris_max_funding_enforced() {
     setup!(
         env,
@@ -1003,7 +995,6 @@ fn test_register_prog_w_juris_max_funding_enforced() {
         registration_paused: false,
     };
 
-    let res = client.try_register_program_juris(
     let res = client.try_register_prog_w_juris(
         &93,
         &program_admin,
@@ -1020,7 +1011,6 @@ fn test_register_prog_w_juris_max_funding_enforced() {
 }
 
 #[test]
-fn test_register_program_juris_pause_enforced() {
 fn test_register_prog_w_juris_pause_enforced() {
     setup!(
         env,
@@ -1040,7 +1030,6 @@ fn test_register_prog_w_juris_pause_enforced() {
         registration_paused: true,
     };
 
-    let res = client.try_register_program_juris(
     let res = client.try_register_prog_w_juris(
         &94,
         &program_admin,
@@ -1057,7 +1046,6 @@ fn test_register_prog_w_juris_pause_enforced() {
 }
 
 #[test]
-fn test_batch_register_juris() {
 fn test_batch_reg_progs_w_juris() {
     setup!(
         env,

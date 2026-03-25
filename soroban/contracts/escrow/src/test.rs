@@ -52,16 +52,6 @@ fn setup<'a>(
 
 fn has_event_topic(env: &Env, topic_name: &str) -> bool {
     use soroban_sdk::testutils::Events as _;
-    let expected = Symbol::new(env, topic_name);
-    let events = env.events().all();
-    for (_contract, topics, _data) in events.iter() {
-        if topics.len() == 0 {
-            continue;
-        }
-        let first: soroban_sdk::Val = topics.get(0).unwrap();
-        // Compare the raw val representation
-        let expected_val: soroban_sdk::Val = expected.to_val();
-        if first.get_payload() == expected_val.get_payload() {
     use soroban_sdk::IntoVal;
     let expected: soroban_sdk::Val = Symbol::new(env, topic_name).into_val(env);
     let events = env.events().all();

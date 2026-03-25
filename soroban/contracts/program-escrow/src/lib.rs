@@ -1,15 +1,7 @@
 #![no_std]
 use soroban_sdk::{
-<<<<<<< HEAD
     contract, contracterror, contractimpl, contracttype, symbol_short, token, Address, Env, String,
     Vec,
-    contract, contracterror, contractimpl, contracttype, symbol_short, token, Address, Env, String,
-    Vec,
-=======
-    contract, contracterror, contractimpl, contracttype, symbol_short, symbol_short, token, Address, Env,
-    String,
-    Vec,
->>>>>>> upstream
 };
 
 const MAX_BATCH_SIZE: u32 = 20;
@@ -169,7 +161,6 @@ pub struct ProgramPage {
     pub next_cursor: Option<u64>,
     /// Whether more results exist beyond this page.
     pub has_more: bool,
-    DeprecationState,
 }
 
 #[contract]
@@ -286,7 +277,6 @@ impl ProgramEscrowContract {
         name: String,
         total_funding: i128,
     ) -> Result<(), Error> {
-        Self::register_program_juris(
         Self::register_prog_w_juris(
             env,
             program_id,
@@ -303,7 +293,6 @@ impl ProgramEscrowContract {
     }
 
     /// Register a single program with optional jurisdiction controls.
-    pub fn register_program_juris(
     pub fn register_prog_w_juris(
         env: Env,
         program_id: u64,
@@ -508,7 +497,6 @@ impl ProgramEscrowContract {
     }
 
     /// Batch register programs with optional jurisdiction controls.
-    pub fn batch_register_juris(
     pub fn batch_reg_progs_w_juris(
         env: Env,
         items: Vec<ProgramRegistrationWithJurisdictionItem>,
@@ -824,6 +812,12 @@ impl ProgramEscrowContract {
             next_cursor,
             has_more,
         }
+    }
+
+    /// Get the jurisdiction for a program.
+    pub fn get_program_jurisdiction(
+        env: Env,
+        program_id: u64,
     ) -> Result<OptionalJurisdiction, Error> {
         let program = Self::get_program(env, program_id)?;
         Ok(program.jurisdiction)

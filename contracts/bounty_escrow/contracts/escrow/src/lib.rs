@@ -944,6 +944,9 @@ impl BountyEscrowContract {
         if env.storage().instance().has(&DataKey::Admin) {
             return Err(Error::AlreadyInitialized);
         }
+        if admin == token {
+            return Err(Error::Unauthorized);
+        }
         env.storage().instance().set(&DataKey::Admin, &admin);
         env.storage().instance().set(&DataKey::Token, &token);
 
