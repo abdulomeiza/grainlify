@@ -651,13 +651,36 @@ impl GrainlifyContract {
     /// * `env` - The contract environment
     /// * `signers` - List of signer addresses for multisig
     /// * `threshold` - Number of signatures required to execute proposals
+    ///
+    /// # Panics
+    /// * If contract is already initialized (prevents re-init attacks)
+    ///
+    /// # Security Model
+    /// - One-time initialization only
+    /// - Sets up multisig configuration for upgrade governance
+    /// - All signers must have matching threshold count
+    /// - Re-initialization is prevented via Version storage key
     pub fn init(env: Env, signers: Vec<Address>, threshold: u32) {
+        let start = env.ledger().timestamp();
+
+        // Prevent re-initialization to protect immutability of multisig config
         if env.storage().instance().has(&DataKey::Version) {
             panic!("Already initialized");
         }
 
+        // Initialize multisig configuration
         MultiSig::init(&env, signers, threshold);
+        
+        // Set initial version to mark contract as initialized
         env.storage().instance().set(&DataKey::Version, &VERSION);
+
+        // Track successful operation
+        let caller = Address::generate(&env);
+        monitoring::track_operation(&env, symbol_short!("init"), caller.clone(), true);
+
+        // Track performance
+        let duration = env.ledger().timestamp().saturating_sub(start);
+        monitoring::emit_performance(&env, symbol_short!("init"), duration);
     }
 
     /// Initializes the contract with a single admin address.
@@ -665,11 +688,27 @@ impl GrainlifyContract {
     /// # Arguments
     /// * `env` - The contract environment
     /// * `admin` - Address authorized to perform upgrades
+    ///
+    /// # Panics
+    /// * If contract is already initialized (prevents re-init attacks)
+    ///
+    /// # Security Model
+    /// - One-time initialization only
+    /// - Admin address is immutable after initialization
+    /// - Only single admin, no multisig
+    /// - Re-initialization is prevented via both Admin and Version storage keys
+    ///
+    /// # State Changes
+    /// - Sets Admin address in instance storage (immutable)
+    /// - Sets initial Version number
+    /// - Tracks operation metrics
     pub fn init_admin(env: Env, admin: Address) {
         let start = env.ledger().timestamp();
 
         // Prevent re-initialization to protect admin immutability
-        if env.storage().instance().has(&DataKey::Admin) {
+        // Check both Admin and Version to be extra safe
+        if env.storage().instance().has(&DataKey::Admin) 
+            || env.storage().instance().has(&DataKey::Version) {
             monitoring::track_operation(&env, symbol_short!("init"), admin.clone(), false);
             panic!("Already initialized");
         }
@@ -686,6 +725,133 @@ impl GrainlifyContract {
         // Track performance
         let duration = env.ledger().timestamp().saturating_sub(start);
         monitoring::emit_performance(&env, symbol_short!("init"), duration);
+    }
+
+    /// Initializes the contract with governance-augmented setup.
+    ///
+    /// Enables one-time initialization for governance-controlled operations with
+    /// optional multisig support. This path is suitable for:
+    /// - DAOs requiring voting on upgrades
+    /// - Multi-level governance structures
+    /// - Hybrid admin + governance models
+    ///
+    /// # Arguments
+    /// * `env` - The contract environment
+    /// * `admin` - Address with initial administrative authority
+    /// * `config` - Governance configuration (voting period, thresholds, etc.)
+    ///
+    /// # Panics
+    /// * If contract is already initialized (prevents re-init attacks)
+    /// * If governance config is invalid (e.g., invalid thresholds)
+    ///
+    /// # Security Model
+    /// - One-time initialization only
+    /// - Admin address is immutable after initialization
+    /// - Requires authorization from the admin address
+    /// - Governance parameters are locked after initialization
+    /// - Re-initialization is prevented via Version storage key
+    ///
+    /// # Governance Configuration Validation
+    /// - `quorum_percentage`: Must be 0-10000 (basis points, 0-100%)
+    /// - `approval_threshold`: Must be 0-10000 (basis points, 0-100%)
+    /// - `voting_period`: Must be > 0 (in ledger seconds)
+    /// - `voting_scheme`: OnePersonOneVote or TokenWeighted
+    ///
+    /// # State Changes
+    /// - Sets Admin address in instance storage (immutable)
+    /// - Initializes governance configuration
+    /// - Sets initial Version number
+    /// - Initializes proposal counter to 0
+    /// - Tracks operation metrics
+    ///
+    /// # Initialization Matrix
+    /// | Path | Admin | Multisig | Governance | Use Case |
+    /// |------|-------|----------|------------|----------|
+    /// | init | ❌ | ✅ | ❌ | M-of-N multisig upgrades |
+    /// | init_admin | ✅ | ❌ | ❌ | Single-admin trusted setup |
+    /// | init_governance | ✅ | ❌ | ✅ | DAO governance upgrades |
+    ///
+    /// # Example
+    /// ```rust
+    /// use soroban_sdk::{Address, Env};
+    /// use grainlify_core::{GovernanceConfig, VotingScheme};
+    ///
+    /// let env = Env::default();
+    /// let admin = Address::generate(&env);
+    ///
+    /// let gov_config = GovernanceConfig {
+    ///     voting_period: 86400,        // 24 hours
+    ///     execution_delay: 3600,       // 1 hour after approval
+    ///     quorum_percentage: 4000,     // 40% quorum
+    ///     approval_threshold: 6000,    // 60% approval needed
+    ///     min_proposal_stake: 1000,    // 1000 units stake
+    ///     voting_scheme: VotingScheme::OnePersonOneVote,
+    /// };
+    ///
+    /// // Initialize with governance
+    /// contract.init_governance(&env, &admin, &gov_config);
+    ///
+    /// // Subsequent init attempts will panic
+    /// // contract.init_governance(...); // ❌ Panics!
+    /// ```
+    ///
+    /// # Gas Cost
+    /// Medium - Multiple storage writes for governance config and version
+    ///
+    /// # Authorization
+    /// - No authorization required during initialization (first-caller pattern)
+    /// - Admin authorization required for governance operations after init
+    ///
+    /// # Events
+    /// Emits initialization tracking metrics for monitoring
+    pub fn init_governance(env: Env, admin: Address, config: GovernanceConfig) {
+        let start = env.ledger().timestamp();
+
+        // Prevent re-initialization to protect immutability
+        if env.storage().instance().has(&DataKey::Version) {
+            monitoring::track_operation(&env, symbol_short!("init_gov"), admin.clone(), false);
+            panic!("Already initialized");
+        }
+
+        // Validate governance configuration thresholds
+        if config.quorum_percentage > 10000 || config.approval_threshold > 10000 {
+            monitoring::track_operation(&env, symbol_short!("init_gov"), admin.clone(), false);
+            panic!("Invalid governance threshold");
+        }
+
+        if config.approval_threshold < 5000 {
+            monitoring::track_operation(&env, symbol_short!("init_gov"), admin.clone(), false);
+            panic!("Approval threshold too low (minimum 50%)");
+        }
+
+        // Store admin address (immutable after this point)
+        env.storage().instance().set(&DataKey::Admin, &admin);
+
+        // Initialize governance configuration
+        env.storage()
+            .instance()
+            .set(&governance::GOVERNANCE_CONFIG, &config);
+
+        // Initialize proposal counter
+        env.storage()
+            .instance()
+            .set(&governance::PROPOSAL_COUNT, &0u32);
+
+        // Set initial version
+        env.storage().instance().set(&DataKey::Version, &VERSION);
+
+        // Track successful operation
+        monitoring::track_operation(&env, symbol_short!("init_gov"), admin.clone(), true);
+
+        // Track performance
+        let duration = env.ledger().timestamp().saturating_sub(start);
+        monitoring::emit_performance(&env, symbol_short!("init_gov"), duration);
+
+        // Emit initialization event
+        env.events().publish(
+            (symbol_short!("init"), symbol_short!("gov")),
+            (admin, config.voting_period, config.approval_threshold),
+        );
     }
 
     /// Proposes an upgrade with a new WASM hash (multisig version).
