@@ -980,7 +980,10 @@ impl GrainlifyContract {
     pub fn propose_upgrade(env: Env, proposer: Address, wasm_hash: BytesN<32>) -> u64 {
         let proposal_id = MultiSig::propose(&env, proposer.clone());
 
-        if env.storage().instance().has(&DataKey::UpgradeProposal(proposal_id))
+        if env
+            .storage()
+            .instance()
+            .has(&DataKey::UpgradeProposal(proposal_id))
             || env
                 .storage()
                 .instance()
@@ -1134,8 +1137,8 @@ impl GrainlifyContract {
             panic!("Threshold not met");
         }
 
-        let proposal = Self::load_upgrade_proposal(&env, proposal_id)
-            .expect("Missing upgrade proposal");
+        let proposal =
+            Self::load_upgrade_proposal(&env, proposal_id).expect("Missing upgrade proposal");
 
         // Store previous version for potential rollback
         let current_version: u32 = env.storage().instance().get(&DataKey::Version).unwrap_or(1);

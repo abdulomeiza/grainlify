@@ -370,7 +370,10 @@ fn test_propose_upgrade_stores_metadata_per_proposal() {
         .get_upgrade_proposal(&proposal_id)
         .expect("proposal metadata must exist");
 
-    assert_eq!(proposal.proposal_id, proposal_id, "proposal id must round-trip");
+    assert_eq!(
+        proposal.proposal_id, proposal_id,
+        "proposal id must round-trip"
+    );
     assert_eq!(proposal.proposer, Some(signers[0].clone()));
     assert_eq!(proposal.wasm_hash, wasm_hash);
 }
