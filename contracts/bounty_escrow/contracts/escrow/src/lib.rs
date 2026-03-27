@@ -8,6 +8,8 @@ mod test_cross_contract_interface;
 #[cfg(test)]
 mod test_deterministic_randomness;
 #[cfg(test)]
+mod test_fee_routing;
+#[cfg(test)]
 mod test_multi_region_treasury;
 #[cfg(test)]
 mod test_multi_token_fees;
@@ -1285,84 +1287,54 @@ impl BountyEscrowContract {
     ///
     /// Accepts a pre-constructed [`FeeCollected`] event which contains all fee details.
     /// The token client and fee config are resolved internally from contract storage.
-    fn route_fee(env: &Env, fee_event: events::FeeCollected) {
-        if fee_event.amount <= 0 {
+    /// Routes a collected fee to either the default recipient or configured treasury splits.
+    fn route_fee(
+        env: &Env,
+        client: &token::Client,
+        fee_amount: i128,
+        fee_recipient: &Address,
+        distribution_enabled: bool,
+        destinations: &Vec<TreasuryDestination>,
+    ) {
+        if fee_amount <= 0 {
             return;
         }
-        let fee_fixed = match operation_type {
-            events::FeeOperationType::Lock => config.lock_fixed_fee,
-            events::FeeOperationType::Release => config.release_fixed_fee,
-        };
 
-        let token_addr: Address = env.storage().instance().get(&DataKey::Token).unwrap();
-        let client = token::Client::new(env, &token_addr);
-        let config = Self::get_fee_config_internal(env);
-
-        if !config.distribution_enabled || config.treasury_destinations.is_empty() {
-            client.transfer(
-                &env.current_contract_address(),
-                &fee_event.recipient,
-                &fee_event.amount,
-            );
-            events::emit_fee_collected(env, fee_event);
+        // If routing is disabled or no destinations exist, send to the default recipient
+        if !distribution_enabled || destinations.is_empty() {
+            client.transfer(&env.current_contract_address(), fee_recipient, &fee_amount);
             return;
         }
 
         let mut total_weight: u64 = 0;
-        for destination in config.treasury_destinations.iter() {
-            total_weight = total_weight
-                .checked_add(destination.weight as u64)
-                .unwrap_or(u64::MAX);
+        for dest in destinations.iter() {
+            total_weight = total_weight.checked_add(dest.weight as u64).unwrap_or(u64::MAX);
         }
 
         if total_weight == 0 {
-            client.transfer(
-                &env.current_contract_address(),
-                &fee_event.recipient,
-                &fee_event.amount,
-            );
-            events::emit_fee_collected(env, fee_event);
+            client.transfer(&env.current_contract_address(), fee_recipient, &fee_amount);
             return;
         }
 
         let mut distributed = 0i128;
-        let destination_count = config.treasury_destinations.len() as usize;
-        let fee_amount = fee_event.amount;
+        let dest_count = destinations.len() as usize;
 
-        for (index, destination) in config.treasury_destinations.iter().enumerate() {
-            let share = if index + 1 == destination_count {
-                fee_amount
-                    .checked_sub(distributed)
-                    .ok_or(Error::InvalidAmount)?
+        // Distribute proportionally based on weights
+        for (index, destination) in destinations.iter().enumerate() {
+            let share = if index + 1 == dest_count {
+                // Last destination gets the remainder to avoid rounding dust leaks
+                fee_amount.checked_sub(distributed).unwrap_or(0)
             } else {
-                fee_amount
-                    .checked_mul(destination.weight as i128)
-                    .and_then(|value| value.checked_div(total_weight as i128))
-                    .unwrap_or(0)
+                let w = destination.weight as i128;
+                let tw = total_weight as i128;
+                fee_amount.checked_mul(w).unwrap_or(0) / tw
             };
 
-            distributed = distributed.checked_add(share).ok_or(Error::InvalidAmount)?;
+            distributed = distributed.checked_add(share).unwrap_or(distributed);
 
-            if share <= 0 {
-                continue;
+            if share > 0 {
+                client.transfer(&env.current_contract_address(), &destination.address, &share);
             }
-
-            client.transfer(
-                &env.current_contract_address(),
-                &destination.address,
-                &share,
-            );
-            events::emit_fee_collected(
-                env,
-                events::FeeCollected {
-                    operation_type: fee_event.operation_type.clone(),
-                    amount: share,
-                    fee_rate: fee_event.fee_rate,
-                    fee_fixed: fee_event.fee_fixed,
-                    recipient: destination.address,
-                    timestamp: env.ledger().timestamp(),
-                },
-            );
         }
     }
 
@@ -2638,14 +2610,15 @@ impl BountyEscrowContract {
         // Transfer fee to recipient immediately (separate transfer so it is
         // visible as a distinct on-chain operation).
         if fee_amount > 0 {
+            let global_config = Self::get_fee_config_internal(&env);
             Self::route_fee(
                 &env,
                 &client,
-                &fee_config,
                 fee_amount,
-                lock_fee_rate,
-                events::FeeOperationType::Lock,
-            )?;
+                &fee_recipient,
+                global_config.distribution_enabled,
+                &global_config.treasury_destinations,
+            );
         }
         soroban_sdk::log!(&env, "fee ok");
 
@@ -3135,11 +3108,11 @@ impl BountyEscrowContract {
             Self::route_fee(
                 &env,
                 &client,
-                &fee_config,
                 release_fee,
-                release_fee_rate,
-                events::FeeOperationType::Release,
-            )?;
+                &fee_recipient,
+                fee_config.distribution_enabled,
+                &fee_config.treasury_destinations,
+            );
         }
 
         client.transfer(&env.current_contract_address(), &contributor, &net_payout);
