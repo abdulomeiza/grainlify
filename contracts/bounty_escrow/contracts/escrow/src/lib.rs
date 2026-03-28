@@ -1320,10 +1320,8 @@ impl BountyEscrowContract {
         }
 
         let mut total_weight: u64 = 0;
-        for destination in config.treasury_destinations.iter() {
-            total_weight = total_weight
-                .checked_add(destination.weight as u64)
-                .unwrap_or(u64::MAX);
+        for dest in destinations.iter() {
+            total_weight = total_weight.checked_add(dest.weight as u64).unwrap_or(u64::MAX);
         }
 
         if total_weight == 0 {
@@ -1355,16 +1353,15 @@ impl BountyEscrowContract {
                     .checked_sub(distributed)
                     .ok_or(Error::InvalidAmount)?
             } else {
-                fee_amount
-                    .checked_mul(destination.weight as i128)
-                    .and_then(|value| value.checked_div(total_weight as i128))
-                    .unwrap_or(0)
+                let w = destination.weight as i128;
+                let tw = total_weight as i128;
+                fee_amount.checked_mul(w).unwrap_or(0) / tw
             };
 
-            distributed = distributed.checked_add(share).ok_or(Error::InvalidAmount)?;
+            distributed = distributed.checked_add(share).unwrap_or(distributed);
 
-            if share <= 0 {
-                continue;
+            if share > 0 {
+                client.transfer(&env.current_contract_address(), &destination.address, &share);
             }
 
             client.transfer(
@@ -2671,13 +2668,15 @@ impl BountyEscrowContract {
         // Transfer fee to recipient immediately (separate transfer so it is
         // visible as a distinct on-chain operation).
         if fee_amount > 0 {
+            let global_config = Self::get_fee_config_internal(&env);
             Self::route_fee(
                 &env,
                 &client,
                 fee_amount,
-                lock_fee_rate,
-                events::FeeOperationType::Lock,
-            )?;
+                &fee_recipient,
+                global_config.distribution_enabled,
+                &global_config.treasury_destinations,
+            );
         }
         soroban_sdk::log!(&env, "fee ok");
 
@@ -3168,9 +3167,10 @@ impl BountyEscrowContract {
                 &env,
                 &client,
                 release_fee,
-                release_fee_rate,
-                events::FeeOperationType::Release,
-            )?;
+                &fee_recipient,
+                fee_config.distribution_enabled,
+                &fee_config.treasury_destinations,
+            );
         }
 
         client.transfer(&env.current_contract_address(), &contributor, &net_payout);
